@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "Turkish-Finance-LLM"
+version = "0.1.0"
+description = ""
+authors = ["Yusuf Baykaloğlu <yusuff.baykaloglu@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+transformers = "^4.45.2"
+datasets = "^3.0.1"
+pandas = "^2.2.3"
+numpy = "^2.1.2"
+pipeline = "^0.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
