@@ -1,48 +1,50 @@
 import pandas as pd
 from transformers import pipeline
 from datasets import load_dataset
-
-ds = load_dataset("ZixuanKe/sujet-finance-instruct-177k-clean")
-data = pd.DataFrame(ds["train"])
-
-
-def extract_messages(row):
-    user_message = row['messages'][0]['content']
-    assistant_message = row['messages'][1]['content']
-    return pd.Series([user_message, assistant_message])
-
-
-data[['user_message', 'assistant_message']] = data.apply(extract_messages, axis=1)
-flattened_data = data[['user_message', 'assistant_message']]
-data_df = flattened_data[["user_message"]]
-
-
-data_df.to_csv('clean_data.csv', index=False)
-
+import csv
+import json
 
 translator_pipe_en_to_tr = pipeline("translation_en_to_tr", model="Helsinki-NLP/opus-mt-tc-big-en-tr")
 
-data = pd.read_csv("clean_data.csv")
-data['translated_instruction'] = None
-max_tokens = 512
+ds = load_dataset("ZixuanKe/sujet-finance-instruct-177k-clean", split="train")
 
-translated_samples = []
+def split_long_message(message, max_length=512):
+    return [message[i:i + max_length] for i in range(0, len(message), max_length)]
 
-for i in range(len(data)):
-    try:
-        row = data.loc[i]
-        if isinstance(row['user_message'], str) and row['user_message']:
-            original_text = row['user_message'][:max_tokens]
-            translated_text = translator_pipe_en_to_tr(original_text)[0]['translation_text']
-            data.loc[i, 'translated_instruction'] = translated_text
+def translate_messages(messages):
+    translated_messages = []
+    for message in messages:
+        try:
+            content_parts = split_long_message(message['content'])
+            translated_parts = []
 
-            if len(translated_samples) < 5:
-                translated_samples.append((original_text, translated_text))
-        else:
-            print(f"Row {i}: geçersiz içerik")
-    except Exception as e:
-        print(f"Row {i}: çeviri hatası: {e}")
-        continue
+            for part in content_parts:
+                translated_content = translator_pipe_en_to_tr(part)[0]['translation_text']
+                translated_parts.append(translated_content)
+            translated_content = " ".join(translated_parts)
+
+            translated_message = message.copy()
+            translated_message['content'] = translated_content
+            translated_messages.append(translated_message)
+        except Exception as e:
+            print(f"Çeviri sırasında hata oluştu: {e}")
+            continue
+    return translated_messages
 
 
-data.to_csv("translated_finance_data.csv", index=False)
+
+with open('translated_finance_data.csv', 'w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file)
+    writer.writerow(['translated_messages'])
+
+    translated_count = 0
+    for example in ds:
+        messages = example['messages']
+        translated_messages = translate_messages(messages)
+
+
+        writer.writerow([json.dumps(translated_messages, ensure_ascii=False)])
+
+        translated_count += 1
+        if translated_count % 500 == 0:
+            print(f"{translated_count} satır çevrildi.")

@@ -13,6 +13,9 @@ datasets = "^3.0.1"
 pandas = "^2.2.3"
 numpy = "^2.1.2"
 pipeline = "^0.1.0"
+torch = "^2.4.1"
+sentencepiece = "^0.2.0"
+sacremoses = "^0.1.1"
 
 
 [build-system]
